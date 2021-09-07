@@ -1,0 +1,8 @@
+.vscode
+.DS_Store
+.ipynb_checkpoints/
+test-glue/
+runs/
+starting_kit/
+AllData/
+evaluation_tools/
