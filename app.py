@@ -1,37 +1,43 @@
 
-from transformers import AutoTokenizer
-    
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import numpy as np
 # Flask utils
 from flask import Flask, redirect, url_for, request, render_template
 from werkzeug.utils import secure_filename
-from gevent.pywsgi import WSGIServer
-from keras.models import load_model
+#from gevent.pywsgi import WSGIServer
+# from keras.models import load_model
 
 # Define a flask app
 app = Flask(__name__)
 
 # Model saved with Keras model.save()
-MODEL_PATH = ''
+MODEL_PATH = 'model-checkpoint/roberta_trained/'
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+model.eval()
+
+
+def get_pred(sent1,sent2):
+        
+    tokens = tokenizer(sent1,sent2,return_tensors='pt')
+    
+    output = model(**tokens)
+    
+    index = np.argmax(output.logits.detach().numpy(),axis=1)[0]
+
+    if index == 0:
+        return sent1
+    else:
+        return sent2
+
 
 # Load your trained model
-model = load_model(MODEL_PATH)
-model._make_predict_function()          # Necessary
+# model = load_model(MODEL_PATH)
+# model._make_predict_function()          # Necessary
 # print('Model loaded. Start serving...')
 
 print('Model loaded. Check http://127.0.0.1:5000/')
 
-
-def model_predict(sent0, sent1, model):
-    
-    x = tokenizer(sent0, sent1)
-    pred_label = model.predict(x)
-    if pred_label == 0:
-        return sent0
-    else:
-        return sent1
-    
 
 
 @app.route('/', methods=['GET'])
@@ -44,11 +50,15 @@ def index():
 def upload():
     if request.method == 'POST':
         # Get the data from post request
-        sent0 = request.get['Sentence 0']
-        sent1 = request.get['Sentence 1']
-        
+        data = request.form.to_dict()
+        print(data)
+        sent0 = data['sent1']
+        sent1 = data['sent2']
+        print('--------------------------------------------------------')
+        print(sent0,sent1)
+        print('--------------------------------------------------------')
         # Make prediction
-        corr = model_predict(sent0, sent1, model)
+        corr = get_pred(sent0, sent1)
                 
         return render_template('index.html', result = {'Correct Sentence': corr})
 
@@ -56,4 +66,4 @@ def upload():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
